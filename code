@@ -1,0 +1,230 @@
+// ==UserScript==
+// @name         Adurite Cost Per 1000 Robux Calculator
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Calculate cost per 1000 Robux for limited items on adurite.com with customizable font settings and draggable/resizable GUI
+// @author       sk1zy
+// @match        https://adurite.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Load Google Fonts
+    const loadFont = (font) => {
+        const link = document.createElement('link');
+        link.href = `https://fonts.googleapis.com/css2?family=${font}:wght@400;700&display=swap`;
+        link.rel = 'stylesheet';
+        document.head.appendChild(link);
+    };
+
+    loadFont('Nunito');  // Default font
+
+    // Create the main container for the GUI
+    const guiContainer = document.createElement('div');
+    guiContainer.style.position = 'fixed';
+    guiContainer.style.top = '10px';
+    guiContainer.style.right = '10px';
+    guiContainer.style.width = '250px';
+    guiContainer.style.padding = '15px';
+    guiContainer.style.backgroundColor = '#f9f9f9';
+    guiContainer.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
+    guiContainer.style.borderRadius = '8px';
+    guiContainer.style.fontFamily = 'Nunito, Arial, sans-serif';
+    guiContainer.style.zIndex = 1000;
+    guiContainer.style.resize = 'both';
+    guiContainer.style.overflow = 'auto';
+
+    // Add a title for the tool
+    const title = document.createElement('h2');
+    title.textContent = 'Robux Cost Calculator';
+    title.style.margin = '0 0 10px 0';
+    title.style.fontSize = '16px';
+    title.style.color = '#333';
+    title.style.cursor = 'move';
+    guiContainer.appendChild(title);
+
+    // Add settings icon
+    const settingsIcon = document.createElement('div');
+    settingsIcon.innerHTML = '⚙️';
+    settingsIcon.style.position = 'absolute';
+    settingsIcon.style.top = '10px';
+    settingsIcon.style.right = '10px';
+    settingsIcon.style.cursor = 'pointer';
+    settingsIcon.style.fontSize = '20px';  // Larger size
+    guiContainer.appendChild(settingsIcon);
+
+    // Create settings dropdown
+    const settingsMenu = document.createElement('div');
+    settingsMenu.style.display = 'none';
+    settingsMenu.style.position = 'absolute';
+    settingsMenu.style.top = '30px';
+    settingsMenu.style.right = '10px';
+    settingsMenu.style.padding = '10px';
+    settingsMenu.style.backgroundColor = '#fff';
+    settingsMenu.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
+    settingsMenu.style.borderRadius = '8px';
+    settingsMenu.style.zIndex = 1001;
+
+    const fontLabel = document.createElement('label');
+    fontLabel.textContent = 'Select Font:';
+    fontLabel.style.display = 'block';
+    fontLabel.style.marginBottom = '5px';
+    fontLabel.style.fontSize = '12px';
+    fontLabel.style.color = '#333';
+    settingsMenu.appendChild(fontLabel);
+
+    const fontSelect = document.createElement('select');
+    fontSelect.style.width = '100%';
+    fontSelect.style.padding = '8px';
+    fontSelect.style.border = '1px solid #ccc';
+    fontSelect.style.borderRadius = '4px';
+    fontSelect.style.fontFamily = 'Nunito, Arial, sans-serif';
+
+    const fonts = [
+        'Nunito', 'Arial', 'Roboto', 'Lato', 'Open Sans',
+        'Montserrat', 'Oswald', 'Raleway', 'Merriweather', 'Ubuntu',
+        'Playfair Display', 'Poppins', 'PT Sans', 'Noto Sans', 'Quicksand',
+        'Source Sans Pro', 'Cabin', 'Karla', 'Muli', 'Barlow'
+    ];
+
+    fonts.forEach(font => {
+        const option = document.createElement('option');
+        option.value = font;
+        option.textContent = font;
+        fontSelect.appendChild(option);
+    });
+
+    settingsMenu.appendChild(fontSelect);
+    guiContainer.appendChild(settingsMenu);
+
+    // Toggle settings menu visibility
+    settingsIcon.addEventListener('click', () => {
+        settingsMenu.style.display = settingsMenu.style.display === 'none' ? 'block' : 'none';
+    });
+
+    // Add instructions
+    const instructions = document.createElement('p');
+    instructions.textContent = 'Enter the USD and Robux costs of the limited item:';
+    instructions.style.margin = '0 0 10px 0';
+    instructions.style.fontSize = '12px';
+    instructions.style.color = '#555';
+    guiContainer.appendChild(instructions);
+
+    // Create the USD cost input field
+    const usdLabel = document.createElement('label');
+    usdLabel.textContent = 'USD Cost:';
+    usdLabel.style.display = 'block';
+    usdLabel.style.marginBottom = '5px';
+    usdLabel.style.fontSize = '12px';
+    usdLabel.style.color = '#333';
+    guiContainer.appendChild(usdLabel);
+
+    const usdInput = document.createElement('input');
+    usdInput.type = 'number';
+    usdInput.id = 'usd-cost';
+    usdInput.style.width = '100%';
+    usdInput.style.padding = '8px';
+    usdInput.style.marginBottom = '10px';
+    usdInput.style.border = '1px solid #ccc';
+    usdInput.style.borderRadius = '4px';
+    usdInput.style.fontFamily = 'Nunito, Arial, sans-serif';
+    guiContainer.appendChild(usdInput);
+
+    // Create the Robux cost input field
+    const robuxLabel = document.createElement('label');
+    robuxLabel.textContent = 'Robux Cost:';
+    robuxLabel.style.display = 'block';
+    robuxLabel.style.marginBottom = '5px';
+    robuxLabel.style.fontSize = '12px';
+    robuxLabel.style.color = '#333';
+    guiContainer.appendChild(robuxLabel);
+
+    const robuxInput = document.createElement('input');
+    robuxInput.type = 'number';
+    robuxInput.id = 'robux-cost';
+    robuxInput.style.width = '100%';
+    robuxInput.style.padding = '8px';
+    robuxInput.style.marginBottom = '10px';
+    robuxInput.style.border = '1px solid #ccc';
+    robuxInput.style.borderRadius = '4px';
+    robuxInput.style.fontFamily = 'Nunito, Arial, sans-serif';
+    guiContainer.appendChild(robuxInput);
+
+    // Create the calculate button
+    const calculateButton = document.createElement('button');
+    calculateButton.textContent = 'Calculate';
+    calculateButton.style.width = '100%';
+    calculateButton.style.padding = '10px';
+    calculateButton.style.backgroundColor = '#4CAF50';
+    calculateButton.style.color = 'white';
+    calculateButton.style.border = 'none';
+    calculateButton.style.borderRadius = '4px';
+    calculateButton.style.cursor = 'pointer';
+    calculateButton.style.fontSize = '14px';
+    calculateButton.style.fontWeight = 'bold';
+    calculateButton.style.fontFamily = 'Nunito, Arial, sans-serif';
+    calculateButton.addEventListener('mouseenter', function() {
+        calculateButton.style.backgroundColor = '#45a049';
+    });
+    calculateButton.addEventListener('mouseleave', function() {
+        calculateButton.style.backgroundColor = '#4CAF50';
+    });
+    guiContainer.appendChild(calculateButton);
+
+    // Create the result display area
+    const result = document.createElement('div');
+    result.id = 'result';
+    result.style.marginTop = '15px';
+    result.style.fontSize = '14px';
+    result.style.color = '#333';
+    result.style.fontWeight = 'bold';
+    result.style.fontFamily = 'Nunito, Arial, sans-serif';
+    guiContainer.appendChild(result);
+
+    // Append the GUI to the body
+    document.body.appendChild(guiContainer);
+
+    // Function to calculate and display the cost per 1000 Robux
+    calculateButton.addEventListener('click', function() {
+        const usdCost = parseFloat(document.getElementById('usd-cost').value);
+        const robuxCost = parseFloat(document.getElementById('robux-cost').value);
+
+        if (isNaN(usdCost) || isNaN(robuxCost) || usdCost <= 0 || robuxCost <= 0) {
+            result.textContent = 'Please enter valid numbers for both USD and Robux costs.';
+            return;
+        }
+
+        const costPer1000Robux = (usdCost / robuxCost) * 1000;
+        result.textContent = `Cost per 1000 Robux: $${costPer1000Robux.toFixed(2)}`;
+    });
+
+    // Function to change the font family of the GUI
+    fontSelect.addEventListener('change', function() {
+        const selectedFont = fontSelect.value;
+        loadFont(selectedFont.replace(/ /g, '+'));
+        guiContainer.style.fontFamily = `${selectedFont}, Arial, sans-serif`;
+    });
+
+    // Make the GUI draggable
+    let isDragging = false;
+    let dragOffsetX, dragOffsetY;
+
+    title.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        dragOffsetX = e.clientX - guiContainer.getBoundingClientRect().left;
+        dragOffsetY = e.clientY - guiContainer.getBoundingClientRect().top;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            guiContainer.style.left = `${e.clientX - dragOffsetX}px`;
+            guiContainer.style.top = `${e.clientY - dragOffsetY}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+    });
+})();
